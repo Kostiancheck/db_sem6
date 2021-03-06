@@ -108,18 +108,21 @@ def get_previous_run_time(cursor):
 def get_user_query(cursor, filename):
     """Варіант 14: Порівняти середній бал з Англійської мови у кожному регіоні у 2020 та 2019 роках
     серед тих кому було зараховано тест"""
-    user_query = f"""Select student.regname, student.examyear, AVG(subject.ball100)::Numeric(10, 3) AS average_mark
+    LOG.info("Getting data for users query")
+
+    user_query = f"""Select student.regname, student.examyear, AVG(subject.ball100)::Numeric(10, 3) AS englishAverageMark
     From {STUDENT_TABLE_NAME} as student
     INNER JOIN {SUBJECT_TABLE_NAME} as subject
     ON student.outid = subject.outid
     Where subject.subjtype = 'eng' AND subject.teststatus = 'Зараховано'
     Group by student.examyear, student.regname
-    Order by  average_mark desc"""
+    Order by  englishAverageMark desc"""
 
     to_csv_query = f"COPY ({user_query}) TO STDOUT WITH CSV HEADER"
 
     with open(filename, 'w') as f:
         cursor.copy_expert(to_csv_query, f)
+    LOG.info(f"Users query data recorded into {filename}")
 
 
 def create_tables(conn, cursor):
@@ -210,10 +213,11 @@ def insert_data(conn, cursor, csv_filename, year, last_row_number, start_time):
 
 
 def build_plot(filename):
+    LOG.info(f"Building plot for data from {filename} file")
     data = pd.read_csv(filename, sep=',')
     data['year_region'] = data['examyear'].astype(str) + "-" + data['regname']
 
-    figure = data.plot.bar(x='year_region', y='average_mark', color="orange", figsize=(20, 7))
+    figure = data.plot.bar(x='year_region', y='englishaveragemark', color="orange", figsize=(20, 7))
     plt.ylabel('Середній бал')
     plt.xlabel('рік-регіон')
     plt.title(
@@ -221,7 +225,10 @@ def build_plot(filename):
     )
     for p in figure.patches:
         figure.annotate(str(p.get_height()), (p.get_x() * 1.0001, p.get_height() * 0.02), rotation=90)
-    plt.savefig('results_photo/AverageMarkByRegion.png', bbox_inches='tight')
+
+    picture_path = 'results_photo/AverageMarkByRegion.png'
+    plt.savefig(picture_path, bbox_inches='tight')
+    LOG.info(f"Plot saved into {picture_path}")
 
 
 def main():
@@ -232,34 +239,33 @@ def main():
         host=os.environ.get("db_host")
     )
     cursor = conn.cursor()
-    create_tables(conn, cursor)  # create tables (conn.commit inside)
-
-    file_year, row_number = get_breakpoint(cursor)
-    conn.commit()
-
-    start_time = datetime.now()
-    LOG.info(f"Start time {start_time}")
-
-    if file_year:  # start from the last row that was inserted
-        index = YEARS.index(file_year)
-        for year in YEARS[index:]:
-            insert_data(conn, cursor, f"Odata{year}File.csv", year, row_number, start_time)
-            row_number = 0
-    else:  # else start from the beginning
-        for year in YEARS:
-            insert_data(conn, cursor, f"Odata{year}File.csv", year, row_number, start_time)
-            row_number = 0
-
-    previous_run_work_time = get_previous_run_time(cursor)
-    end_time = datetime.now()
-    LOG.info(f"End time {end_time}")
-    LOG.info(f"Inserting executing time {end_time - start_time}")
-    LOG.info(f"Total inserting executing time {end_time - start_time + previous_run_work_time}")
+    # create_tables(conn, cursor)  # create tables (conn.commit inside)
+    #
+    # file_year, row_number = get_breakpoint(cursor)
+    # conn.commit()
+    #
+    # start_time = datetime.now()
+    # LOG.info(f"Start time {start_time}")
+    #
+    # if file_year:  # start from the last row that was inserted
+    #     index = YEARS.index(file_year)
+    #     for year in YEARS[index:]:
+    #         insert_data(conn, cursor, f"Odata{year}File.csv", year, row_number, start_time)
+    #         row_number = 0
+    # else:  # else start from the beginning
+    #     for year in YEARS:
+    #         insert_data(conn, cursor, f"Odata{year}File.csv", year, row_number, start_time)
+    #         row_number = 0
+    #
+    inserting_time = get_previous_run_time(cursor)
+    # end_time = datetime.now()
+    # LOG.info(f"End time {end_time}")
+    # LOG.info(f"Inserting executing time {end_time - start_time}")
 
     filename = "resultFile.csv"
 
-    get_user_query(cursor, filename)
-    conn.commit()
+    # get_user_query(cursor, filename)
+    # conn.commit()
 
     build_plot(filename)
 
@@ -267,6 +273,7 @@ def main():
     conn.close()
 
     LOG.info("Program is finished")
+    LOG.info(f"Total inserting executing time {inserting_time}")
 
 
 if __name__ == "__main__":
