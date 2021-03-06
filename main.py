@@ -239,33 +239,33 @@ def main():
         host=os.environ.get("db_host")
     )
     cursor = conn.cursor()
-    # create_tables(conn, cursor)  # create tables (conn.commit inside)
-    #
-    # file_year, row_number = get_breakpoint(cursor)
-    # conn.commit()
-    #
-    # start_time = datetime.now()
-    # LOG.info(f"Start time {start_time}")
-    #
-    # if file_year:  # start from the last row that was inserted
-    #     index = YEARS.index(file_year)
-    #     for year in YEARS[index:]:
-    #         insert_data(conn, cursor, f"Odata{year}File.csv", year, row_number, start_time)
-    #         row_number = 0
-    # else:  # else start from the beginning
-    #     for year in YEARS:
-    #         insert_data(conn, cursor, f"Odata{year}File.csv", year, row_number, start_time)
-    #         row_number = 0
-    #
+    create_tables(conn, cursor)  # create tables (conn.commit inside)
+
+    file_year, row_number = get_breakpoint(cursor)
+    conn.commit()
+
+    start_time = datetime.now()
+    LOG.info(f"Start time {start_time}")
+
+    if file_year:  # start from the last row that was inserted
+        index = YEARS.index(file_year)
+        for year in YEARS[index:]:
+            insert_data(conn, cursor, f"Odata{year}File.csv", year, row_number, start_time)
+            row_number = 0
+    else:  # else start from the beginning
+        for year in YEARS:
+            insert_data(conn, cursor, f"Odata{year}File.csv", year, row_number, start_time)
+            row_number = 0
+
     inserting_time = get_previous_run_time(cursor)
-    # end_time = datetime.now()
-    # LOG.info(f"End time {end_time}")
-    # LOG.info(f"Inserting executing time {end_time - start_time}")
+    end_time = datetime.now()
+    LOG.info(f"End time {end_time}")
+    LOG.info(f"Inserting executing time {end_time - start_time}")
 
     filename = "resultFile.csv"
 
-    # get_user_query(cursor, filename)
-    # conn.commit()
+    get_user_query(cursor, filename)
+    conn.commit()
 
     build_plot(filename)
 
