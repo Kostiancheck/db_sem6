@@ -5,8 +5,8 @@ import psycopg2
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from datetime import datetime, timedelta
 from psycopg2.errors import lookup
+from datetime import datetime, timedelta
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig(
@@ -22,7 +22,7 @@ STUDENT_COLUMNS = ['OUTID', 'Birth', 'SEXTYPENAME', 'REGNAME', 'AREANAME', 'TERN
                    'ClassProfileNAME', 'ClassLangName', 'EONAME', 'EOTYPENAME', 'EORegName', 'EOAreaName', 'EOTerName',
                    'EOParent']
 SUBJECT_COLUMNS_STR = ["OUTID", "Test", "TestStatus", "PTName", "PTRegName", "PTAreaName", "PTTerName"]
-SUBJECT_COLUMNS_INT = ["Ball100", "Ball12", "Ball"]
+SUBJECT_COLUMNS_FLOAT = ["Ball100", "Ball12", "Ball"]
 
 STUDENT_TABLE_NAME = "StudentTable"
 SUBJECT_TABLE_NAME = "SubjectTable"
@@ -48,7 +48,7 @@ def create_subject_insert_query(row):
         ]
         subject_info_ball = [
             row[f"{subject}{el}"].replace(",", ".")
-            for el in SUBJECT_COLUMNS_INT
+            for el in SUBJECT_COLUMNS_FLOAT
         ]
 
         try:
