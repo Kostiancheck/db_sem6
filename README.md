@@ -32,11 +32,13 @@ python3 main.py
 
 - Windows
 
-```
+
+```bash
 py -m pip install --user virtualenv
 py -m venv bd_env
 .\bd_env\Scripts\activate
-py -m pip install -r requirements.txt
+env.bat
+py -m pip install -r requirements.dev
 py main.py
 ```
 
