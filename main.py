@@ -17,66 +17,33 @@ logging.basicConfig(
 
 YEARS = [2019, 2020]
 
-SUBJECTS_LIST = ["Ukr", "hist", "math", "phys", "chem", "bio", "geo", "eng", "fra", "deu", "spa"]
-STUDENT_COLUMNS = ['OUTID', 'Birth', 'SEXTYPENAME', 'REGNAME', 'AREANAME', 'TERNAME', 'REGTYPENAME', 'TerTypeName',
-                   'ClassProfileNAME', 'ClassLangName', 'EONAME', 'EOTYPENAME', 'EORegName', 'EOAreaName', 'EOTerName',
-                   'EOParent']
-SUBJECT_COLUMNS_STR = ["OUTID", "Test", "TestStatus", "PTName", "PTRegName", "PTAreaName", "PTTerName"]
-SUBJECT_COLUMNS_FLOAT = ["Ball100", "Ball12", "Ball"]
+# For the future usage
+# SUBJECTS_LIST = ["Ukr", "hist", "math", "phys", "chem", "bio", "geo", "eng", "fra", "deu", "spa"]
+# STUDENT_COLUMNS = ['OUTID', 'Birth', 'SEXTYPENAME', 'REGNAME', 'AREANAME', 'TERNAME', 'REGTYPENAME', 'TerTypeName',
+#                    'ClassProfileNAME', 'ClassLangName', 'EONAME', 'EOTYPENAME', 'EORegName', 'EOAreaName', 'EOParent']
+# SUBJECT_COLUMNS_STR = ["OUTID", "Test", "TestStatus", "PTName", "PTRegName", "PTAreaName", "PTTerName"]
+# SUBJECT_COLUMNS_FLOAT = ["Ball100", "Ball12", "Ball"]
+# SUBJECT_TABLE_NAME = "SubjectTable"
+# STUDENT_TABLE_NAME = "StudentTable"
 
-STUDENT_TABLE_NAME = "StudentTable"
-SUBJECT_TABLE_NAME = "SubjectTable"
+TEST_TABLE_NAME = "TestTable"
 LAST_ROW_TABLE = "LastRowTable"
 
 
-def create_student_insert_query(row, year):
-    insert_query = f"insert into {STUDENT_TABLE_NAME} values" + str(
-        tuple([row[el].replace("'", "`") for el in STUDENT_COLUMNS]) + (year,))
-    return insert_query + ";"
-
-
-def create_subject_insert_query(row):
-    insert_query = f"insert into {SUBJECT_TABLE_NAME} values"
-    outid = row[SUBJECT_COLUMNS_STR[0]]
-    for subject in SUBJECTS_LIST:
-        if row[subject + SUBJECT_COLUMNS_STR[2]] == "null":
-            continue
-        insert_subjects_string = "('" + outid + "','" + subject + "',"
-        subject_info_str = [
-            row[f"{subject}{el}"].replace("'", "`")
-            for el in SUBJECT_COLUMNS_STR[1:]
-        ]
-        subject_info_ball = [
-            row[f"{subject}{el}"].replace(",", ".")
-            for el in SUBJECT_COLUMNS_FLOAT
-        ]
-
+def create_insert_query(row, year):
+    insert_query = f"INSERT INTO {TEST_TABLE_NAME} VALUES ("
+    insert_query += str(year) + ", "
+    for value in row:
         try:
-            dpa_level = row["DPALevel"]
-        except KeyError:
-            dpa_level = "null"
+            value = value.replace(",", ".")
+            float(value)
+        except ValueError:
+            if value != "null":
+                value = "'" + value.replace("'", "`") + "'"
+        insert_query += value + ", "
 
-        try:
-            adapt_scale = row["AdaptScale"]
-        except KeyError:
-            adapt_scale = "null"
-
-        insert_subject_query = (
-                insert_subjects_string
-                + "'"
-                + "','".join(subject_info_str)
-                + "'"
-                + ","
-                + ",".join(subject_info_ball)
-                + ","
-                + dpa_level
-                + ","
-                + adapt_scale
-                + "),"
-        )
-        insert_query += insert_subject_query
-
-    insert_query = insert_query[:-1] + ";"  # delete last coma and add ";"
+    insert_query = insert_query[:-2]  # delete last space and comma
+    insert_query += ");"
     return insert_query
 
 
@@ -110,11 +77,9 @@ def get_user_query(cursor, filename):
     серед тих кому було зараховано тест"""
     LOG.info("Getting data for users query")
 
-    user_query = f"""Select student.regname, student.examyear, AVG(subject.ball100)::Numeric(10, 3) AS englishAverageMark
-    From {STUDENT_TABLE_NAME} as student
-    INNER JOIN {SUBJECT_TABLE_NAME} as subject
-    ON student.outid = subject.outid
-    Where subject.subjtype = 'eng' AND subject.teststatus = 'Зараховано'
+    user_query = f"""Select student.regname, student.examyear, AVG(student.engball100)::Numeric(10, 3) AS englishAverageMark
+    From {TEST_TABLE_NAME} as student
+    Where student.engteststatus = 'Зараховано'
     Group by student.examyear, student.regname
     Order by  englishAverageMark desc"""
 
@@ -127,13 +92,9 @@ def get_user_query(cursor, filename):
 
 def create_tables(conn, cursor):
     LOG.info("Creating tables")
-    with open('queries/CreateStudentTable.sql') as create_file:
-        student_table_create = create_file.read().format(table_name=STUDENT_TABLE_NAME)
+    with open('queries/CreateTestTable.sql') as create_file:
+        student_table_create = create_file.read().format(table_name=TEST_TABLE_NAME)
         # print(student_table_create)
-
-    with open('queries/CreateSubjectTable.sql') as create_file:
-        subject_table_create = create_file.read().format(table_name=SUBJECT_TABLE_NAME, fk_table=STUDENT_TABLE_NAME)
-        # print(subject_table_create)
 
     with open('queries/CreateLastRowTable.sql') as create_file:
         row_table_create = create_file.read().format(table_name=LAST_ROW_TABLE)
@@ -141,22 +102,15 @@ def create_tables(conn, cursor):
 
     try:
         cursor.execute(student_table_create)
-        LOG.info(f"Table {STUDENT_TABLE_NAME} created successfully")
+        LOG.info(f"Table {TEST_TABLE_NAME} created successfully")
     except lookup("42P07"):  # psycopg2.errors.DuplicateTable: relation "studenttable" already exists
-        LOG.info(f"Table {STUDENT_TABLE_NAME} already exists")
-    conn.commit()
-
-    try:
-        cursor.execute(subject_table_create)
-        LOG.info(f"Table {SUBJECT_TABLE_NAME} created successfully")
-    except lookup("42P07"):  # psycopg2.errors.DuplicateTable: relation "subjecttable" already exists
-        LOG.info(f"Table {SUBJECT_TABLE_NAME} already exists")
+        LOG.info(f"Table {TEST_TABLE_NAME} already exists")
     conn.commit()
 
     try:
         cursor.execute(row_table_create)
         cursor.execute(f"INSERT INTO {LAST_ROW_TABLE} VALUES (0, 0, 0)")  # set default values
-        LOG.info(f"Table {STUDENT_TABLE_NAME} created successfully")
+        LOG.info(f"Table {LAST_ROW_TABLE} created successfully")
     except lookup("42P07"):  # psycopg2.errors.DuplicateTable: relation "subjecttable" already exists
         LOG.info(f"Table {LAST_ROW_TABLE} already exists")
     conn.commit()
@@ -166,22 +120,18 @@ def insert_data(conn, cursor, csv_filename, year, last_row_number, start_time):
     previous_stack_time = start_time
     LOG.info(f"Inserting data from {last_row_number} row from file for {year} year")
     with open(csv_filename, encoding="cp1251") as csv_file:
-        csv_reader = csv.DictReader(csv_file, delimiter=';')
+        csv_reader = csv.reader(csv_file, delimiter=';')
 
         i = 0
         for row in csv_reader:
-            # skip rows before the row where the program has broken
-            i += 1
             print(i)
             if i <= last_row_number:
+                i += 1
                 continue
 
-            insert_student_query = create_student_insert_query(row, year)
-            insert_subject_query = create_subject_insert_query(row)
-
+            insert_student_query = create_insert_query(row, year)
             try:
                 cursor.execute(insert_student_query)
-                cursor.execute(insert_subject_query)
             except Exception as e:
                 end_time = datetime.now()
                 LOG.info(f"Break time {end_time}")
@@ -201,7 +151,10 @@ def insert_data(conn, cursor, csv_filename, year, last_row_number, start_time):
                     LOG.info(f"Я упал: {e}")
                     conn.rollback()
                     raise e
+
                 previous_stack_time = now
+            i += 1
+
         try:
             conn.commit()  # commit last changes, because i % 50 can be not 0
         except Exception as e:
@@ -242,7 +195,6 @@ def main():
     create_tables(conn, cursor)  # create tables (conn.commit inside)
 
     file_year, row_number = get_breakpoint(cursor)
-    conn.commit()
 
     start_time = datetime.now()
     LOG.info(f"Start time {start_time}")
@@ -265,7 +217,6 @@ def main():
     filename = "resultFile.csv"
 
     get_user_query(cursor, filename)
-    conn.commit()
 
     build_plot(filename)
 
