@@ -8,8 +8,6 @@
 
 - `docker-compose up`
 
-Для Windows замініть поле app.env_file в docker-compose.yml з.env на env.bat
-
 ## Опис програми
 
 ### Підключення до бази
