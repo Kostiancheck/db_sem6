@@ -1,10 +1,3 @@
-CREATE TABLE IF NOT EXISTS LastRowTable
-(
-    fileyear             SMALLINT,
-    rowNumber            SERIAL,
-    workTimeMicroseconds BIGINT
-);
-
 CREATE TABLE IF NOT EXISTS TestTable
 (
     examYear         SMALLINT,
