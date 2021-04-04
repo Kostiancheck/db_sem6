@@ -1,1 +1,1 @@
--- DROP TABLE TestTable;
+DROP TABLE TestTable;
