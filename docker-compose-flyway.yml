@@ -2,6 +2,6 @@ version: "3.8"
 services:
   flyway:
     image: flyway/flyway
-    command: -url=jdbc:postgresql://db:5432/postgres -schemas=public -user=postgres -password=postgres -connectRetries=25 baseline migrate
+    command: -url=jdbc:postgresql://db:5432/postgres -schemas=public -user=postgres -password=postgres -connectRetries=25 -baselineOnMigrate=true migrate
     volumes:
       - .:/flyway/sql
